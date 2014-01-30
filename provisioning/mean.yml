@@ -1,0 +1,95 @@
+---
+- hosts: all
+  user: vagrant
+
+  roles:
+    - common
+    - ruby
+    - nodejs
+    - mongodb
+    - yo
+    - express
+    - nginx
+
+  tasks:
+    - name: update sudoers
+      action: copy src=templates/sudoers dest=/etc/sudoers
+      sudo: True
+
+    - name: update apt
+      action: command /usr/bin/apt-get update
+      sudo: True
+
+    - name: update cache 
+      apt: update_cache=yes
+      sudo: True
+
+    - name: install userspace packages
+      apt: pkg=$item state=installed
+      sudo: True
+      with_items:
+        - augeas-tools
+        - build-essential
+        - curl
+        - git
+        - libxml2-dev # Nokogiri
+        - libxslt1-dev # Nokogiri
+        - libyaml-dev
+        - libaugeas-dev
+        - libaugeas-ruby 
+        - libgdbm-dev
+        - libtool
+        - libffi-dev
+        - libpq-dev
+        - memcached
+        - postgresql-contrib
+        - python-dev
+        - python-setuptools
+        - python-software-properties
+        - pkg-config
+        - postgresql
+        - python-psycopg2
+        - tmux
+        - vim
+        - whois
+        - xorg
+        - zsh
+
+    - name: install python libraries
+      action: easy_install name=psycopg2==2.4.5
+      sudo: True
+
+    - name:  install oh-my-zsh
+      shell: curl -L https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh
+      tags: [zsh]
+
+    - name: copy config files for vimrc
+      action: copy src=/Users/akira/.vimrc dest=/home/vagrant/.vimrc
+
+    - name: copy config files for zsh profile 
+      action: copy src=/Users/akira/.zprofile dest=/home/vagrant/.zprofile
+
+    - name: copy config files for zshrc 
+      action: copy src=/Users/akira/.zshrc dest=/home/vagrant/.zshrc
+
+    - name: copy config files for zsh aliases 
+      action: copy src=/Users/akira/.aliases dest=/home/vagrant/.aliases
+
+    - name: copy config files for bash aliases
+      action: copy src=/Users/akira/.bash_aliases dest=/home/vagrant/.bash_aliases
+
+    #use rsync for recursive file copying
+    - name: rsync recursive copy for oh my zsh 
+      local_action: shell rsync -puavxSH -e "ssh -vvv" --delete --owner=vagrant --chmod=u=rX,g=rX,o=rXw /Users/akira/.oh-my-zsh vagrant@{{ vagrant_static_ip }}:/home/vagrant
+
+    - name: rsync recursive copy for vim config files 
+      local_action: shell rsync -puavxSH -e "ssh -vvv" --delete --owner=vagrant --chmod=u=rX,g=rX,o=rXw /Users/akira/.vim vagrant@{{ vagrant_static_ip }}:/home/vagrant
+
+    - name: Set zsh as default shell
+      user: name=$user shell=/bin/zsh
+      sudo: True
+
+  handlers:
+    - name: restart postgresql
+      action: service name=postgresql state=restarted
+      sudo: True
